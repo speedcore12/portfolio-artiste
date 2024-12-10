@@ -1,17 +1,19 @@
 namespace middlewares
 {
-    using Microsoft.Data.SqlClient;
     using Microsoft.AspNetCore.Builder;
+    using Microsoft.AspNetCore.Http;
     using Microsoft.Extensions.Configuration;
+    using Microsoft.Data.SqlClient; // Utilisation de Microsoft.Data.SqlClient
+    using Schemas;
+    using System.Text.Json;
 
     public static class RoutesMiddleware
     {
         public static void MapRoutes(this IEndpointRouteBuilder endpoints)
         {
-            // Crée un groupe de routes avec le préfixe /api
             var apiGroup = endpoints.MapGroup("/api");
 
-            // DB testing
+            // Route pour tester la connexion à la base de données
             apiGroup.MapGet("/test-db", async (IConfiguration config) =>
             {
                 var connectionString = config.GetConnectionString("DefaultConnection");
@@ -30,6 +32,32 @@ namespace middlewares
                 {
                     Console.WriteLine($"Erreur générale : {ex.Message}");
                     return Results.Problem($"Erreur générale : {ex.Message}");
+                }
+            });
+
+            // Route pour le login
+            apiGroup.MapPost("/login", async (HttpContext context) =>
+            {
+                try
+                {
+                    var requestBody = await JsonSerializer.DeserializeAsync<LoginRequest>(context.Request.Body);
+
+                    if (requestBody == null || string.IsNullOrEmpty(requestBody.Email) || string.IsNullOrEmpty(requestBody.Password))
+                    {
+                        return Results.BadRequest("Requête invalide : email et mot de passe requis.");
+                    }
+
+                    if (requestBody.Email == "user@example.com" && requestBody.Password == "password123")
+                    {
+                        return Results.Ok(new { Message = "Connexion réussie", Token = "example-jwt-token" });
+                    }
+
+                    return Results.Json(new { Error = "Identifiants incorrects" }, statusCode: 401);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Erreur générale : {ex.Message}");
+                    return Results.Problem($"Erreur lors du traitement de la requête : {ex.Message}");
                 }
             });
         }
