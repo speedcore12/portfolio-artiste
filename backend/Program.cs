@@ -1,11 +1,19 @@
 using Microsoft.EntityFrameworkCore;
-using middlewares; 
+using middlewares;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Charger les variables d'environnement
+Env.Load();
+
+// Récupérer la chaîne de connexion depuis les variables d'environnement
+var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
+                       ?? throw new InvalidOperationException("La chaîne de connexion est manquante.");
+
 // Ajouter ApplicationDbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
 
 // Ajouter les middlewares nécessaires
 builder.Services.AddSwaggerMiddleware();

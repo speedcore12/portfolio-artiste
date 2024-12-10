@@ -7,6 +7,12 @@ namespace Data
     {
         private readonly string _connectionString;
 
+        public DbManager()
+        {
+            _connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+                                ?? throw new InvalidOperationException("La chaîne de connexion est manquante dans les variables d'environnement.");
+        }
+
         public DbManager(string connectionString)
         {
             _connectionString = connectionString;
@@ -16,6 +22,7 @@ namespace Data
         {
             try
             {
+                // Désérialisation du JSON
                 var tableData = JsonSerializer.Deserialize<Dictionary<string, object>>(json)
                                ?? throw new ArgumentException("Le JSON fourni est invalide ou vide.");
 
@@ -26,18 +33,21 @@ namespace Data
                 if (string.IsNullOrWhiteSpace(tableName))
                     throw new ArgumentException($"Le nom de la table est invalide.");
 
+                // Désérialisation des colonnes
                 var columns = JsonSerializer.Deserialize<List<Dictionary<string, string>>>(tableData["Columns"]?.ToString() ?? string.Empty)
                              ?? throw new ArgumentException("Le JSON doit contenir une liste valide de colonnes sous 'Columns'.");
 
                 if (columns.Count == 0)
                     throw new ArgumentException("Le JSON doit contenir au moins une colonne sous 'Columns'.");
 
+                // Vérification de l'existence de la table
                 if (IsTablePresent(tableName))
                 {
                     Console.WriteLine($"La table '{tableName}' existe déjà.");
                     return false;
                 }
 
+                // Construction de la requête CREATE TABLE
                 var columnDefinitions = new List<string>();
                 foreach (var col in columns)
                 {
@@ -58,6 +68,7 @@ namespace Data
 
                 string createTableQuery = $"CREATE TABLE {tableName} ({string.Join(", ", columnDefinitions)})";
 
+                // Exécution de la requête
                 using var connection = new SqlConnection(_connectionString);
                 connection.Open();
 
@@ -81,20 +92,28 @@ namespace Data
 
         private bool IsTablePresent(string tableName)
         {
-            using var connection = new SqlConnection(_connectionString);
-            connection.Open();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                connection.Open();
 
-            string query = @"
-                SELECT CASE WHEN EXISTS (
-                    SELECT 1 
-                    FROM INFORMATION_SCHEMA.TABLES 
-                    WHERE TABLE_NAME = @TableName
-                ) THEN 1 ELSE 0 END";
+                string query = @"
+                    SELECT CASE WHEN EXISTS (
+                        SELECT 1 
+                        FROM INFORMATION_SCHEMA.TABLES 
+                        WHERE TABLE_NAME = @TableName
+                    ) THEN 1 ELSE 0 END";
 
-            using var command = new SqlCommand(query, connection);
-            command.Parameters.AddWithValue("@TableName", tableName);
+                using var command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@TableName", tableName);
 
-            return Convert.ToBoolean(command.ExecuteScalar());
+                return Convert.ToBoolean(command.ExecuteScalar());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la vérification de la table : {ex.Message}");
+                throw;
+            }
         }
 
         private bool IsValidSqlType(string sqlType)
