@@ -1,0 +1,52 @@
+# Règles globales d'exclusion
+.DS_Store
+*.pem
+
+# Dépendances Node.js (ignorer tous les node_modules)
+node_modules/
+.pnp
+.pnp.*
+
+# Tests et couverture
+coverage/
+
+# Spécifique à Next.js
+.next/
+out/
+
+# Builds de production
+build/
+
+# Journaux de debug
+npm-debug.log*
+
+# Fichiers d'environnement (variables sensibles)
+.env
+.env.*.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Spécifique au backend en C# (ignorer bin et obj partout)
+bin/
+obj/
+*.user
+*.suo
+*.sln.docstates
+project.lock.json
+global.json
+lut/*.lut
+
+# Configurations IDE/Éditeur
+.idea/
+.vscode/
+*.swp
+*.swo
+
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.tar filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
