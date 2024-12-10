@@ -5,7 +5,14 @@ using DotNetEnv;
 var builder = WebApplication.CreateBuilder(args);
 
 // Charger les variables d'environnement
-Env.Load();
+try
+{
+    Env.Load(allowMissing: true); // Charge le fichier .env même s'il est absent ou incorrect
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Erreur lors du chargement des variables d'environnement : {ex.Message}");
+}
 
 // Récupérer la chaîne de connexion depuis les variables d'environnement
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
