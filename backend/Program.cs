@@ -7,7 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Charger les variables d'environnement
 try
 {
-    Env.Load(allowMissing: true); // Charge le fichier .env même s'il est absent ou incorrect
+    // Charge les variables d'environnement à partir du fichier .env
+    DotNetEnv.Env.Load();
 }
 catch (Exception ex)
 {
@@ -18,7 +19,7 @@ catch (Exception ex)
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
                        ?? throw new InvalidOperationException("La chaîne de connexion est manquante.");
 
-// Ajouter ApplicationDbContext
+// Ajouter ApplicationDbContext avec la chaîne de connexion
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 

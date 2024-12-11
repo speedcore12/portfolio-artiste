@@ -1,77 +1,82 @@
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-
 namespace middlewares
 {
-    public static class TokenMiddleware
+    using Microsoft.AspNetCore.Builder;
+    using Microsoft.AspNetCore.Http;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Data.SqlClient; // Utilisation de Microsoft.Data.SqlClient pour la connexion à la base de données
+    using Schemas;
+    using System.Text.Json;
+
+    /// <summary>
+    /// Middleware pour définir et gérer les routes de l'API.
+    /// </summary>
+    public static class RoutesMiddleware
     {
-        private static string GetSecretKey()
-        {
-            return Environment.GetEnvironmentVariable("JWT_SECRET")
-                   ?? throw new InvalidOperationException("La clé JWT est manquante.");
-        }
-
         /// <summary>
-        /// Vérifie si un token JWT est valide pour un utilisateur donné.
+        /// Configure les routes de l'API.
         /// </summary>
-        public static bool IsTokenValid(string token, string userId)
+        /// <param name="endpoints">L'interface permettant de mapper les routes dans l'application.</param>
+        public static void MapRoutes(this IEndpointRouteBuilder endpoints)
         {
-            try
-            {
-                var secretKey = GetSecretKey();
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-                var tokenHandler = new JwtSecurityTokenHandler();
+            // Groupe de routes API avec le préfixe "/api"
+            var apiGroup = endpoints.MapGroup("/api");
 
-                var validationParameters = new TokenValidationParameters
+            /// <summary>
+            /// Route pour tester la connexion à la base de données.
+            /// Vérifie si la connexion à la base de données est possible.
+            /// </summary>
+            apiGroup.MapGet("/test-db", async (IConfiguration config) =>
+            {
+                var connectionString = config.GetConnectionString("DefaultConnection");
+                try
                 {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = key,
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ClockSkew = TimeSpan.Zero
-                };
+                    // Tentative de connexion à la base de données
+                    using var connection = new SqlConnection(connectionString);
+                    await connection.OpenAsync();
+                    return Results.Ok("Connexion réussie à la base de données !");
+                }
+                catch (SqlException sqlEx)
+                {
+                    Console.WriteLine($"Erreur SQL : {sqlEx.Message}");
+                    return Results.Problem($"Erreur SQL : {sqlEx.Message}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Erreur générale : {ex.Message}");
+                    return Results.Problem($"Erreur générale : {ex.Message}");
+                }
+            });
 
-                // Valider le token
-                var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
-
-                // Vérifier si le token contient le même utilisateur
-                var jwtToken = validatedToken as JwtSecurityToken;
-                var claimUserId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                return userId == claimUserId;
-            }
-            catch
+            /// <summary>
+            /// Route pour gérer le login.
+            /// Vérifie les identifiants fournis et génère un jeton JWT si la connexion est réussie.
+            /// </summary>
+            apiGroup.MapPost("/login", async (HttpContext context) =>
             {
-                return false; // Retourne false si le token est invalide ou si une erreur survient
-            }
-        }
+                try
+                {
+                    // Désérialisation du corps de la requête
+                    var requestBody = await JsonSerializer.DeserializeAsync<LoginRequest>(context.Request.Body);
 
-        /// <summary>
-        /// Génère un token JWT pour un utilisateur donné.
-        /// </summary>
-        public static string GenerateToken(string userId, string login)
-        {
-            var secretKey = GetSecretKey();
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+                    if (requestBody == null || string.IsNullOrEmpty(requestBody.Email) || string.IsNullOrEmpty(requestBody.Password))
+                    {
+                        return Results.BadRequest("Requête invalide : email et mot de passe requis.");
+                    }
 
-            // Ajout des claims pour l'utilisateur
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.NameIdentifier, userId),
-                new Claim(ClaimTypes.Name, login)
-            };
+                    // Vérification des identifiants
+                    if (requestBody.Email == "user@example.com" && requestBody.Password == "password123")
+                    {
+                        return Results.Ok(new { Message = "Connexion réussie", Token = "example-jwt-token" });
+                    }
 
-            // Créer le token
-            var token = new JwtSecurityToken(
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(12), // Durée de validité : 12 heures
-                signingCredentials: credentials
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                    return Results.Json(new { Error = "Identifiants incorrects" }, statusCode: 401);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Erreur générale : {ex.Message}");
+                    return Results.Problem($"Erreur lors du traitement de la requête : {ex.Message}");
+                }
+            });
         }
     }
 }

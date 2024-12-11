@@ -1,23 +1,43 @@
 using Microsoft.Data.SqlClient;
 using System.Text.Json;
+using DotNetEnv;
 
 namespace Data
 {
+    /// <summary>
+    /// Classe responsable de la gestion des opérations de base de données.
+    /// </summary>
     public class DbManager
     {
         private readonly string _connectionString;
 
+        /// <summary>
+        /// Constructeur par défaut. Charge la chaîne de connexion depuis les variables d'environnement.
+        /// </summary>
         public DbManager()
         {
+            // Charger les variables d'environnement depuis le fichier .env
+            DotNetEnv.Env.Load();
+
+            // Récupérer la chaîne de connexion
             _connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
                                 ?? throw new InvalidOperationException("La chaîne de connexion est manquante dans les variables d'environnement.");
         }
 
+        /// <summary>
+        /// Constructeur avec chaîne de connexion personnalisée.
+        /// </summary>
+        /// <param name="connectionString">Chaîne de connexion.</param>
         public DbManager(string connectionString)
         {
             _connectionString = connectionString;
         }
 
+        /// <summary>
+        /// Crée une table en fonction d'une structure définie dans un fichier JSON.
+        /// </summary>
+        /// <param name="json">JSON contenant les informations de la table.</param>
+        /// <returns>True si la table a été créée, false si elle existe déjà.</returns>
         public bool CreateTable(string json)
         {
             try
@@ -90,6 +110,11 @@ namespace Data
             }
         }
 
+        /// <summary>
+        /// Vérifie si une table est déjà présente dans la base de données.
+        /// </summary>
+        /// <param name="tableName">Nom de la table.</param>
+        /// <returns>True si la table existe, false sinon.</returns>
         private bool IsTablePresent(string tableName)
         {
             try
@@ -116,6 +141,11 @@ namespace Data
             }
         }
 
+        /// <summary>
+        /// Valide le type SQL des colonnes.
+        /// </summary>
+        /// <param name="sqlType">Type SQL.</param>
+        /// <returns>True si le type est valide, false sinon.</returns>
         private bool IsValidSqlType(string sqlType)
         {
             var validTypes = new HashSet<string>

@@ -9,7 +9,7 @@ namespace Schemas
     public class User
     {
         public int Id { get; set; }
-        public required string Login { get; set; } // Ajout du modificateur 'required'
-        public required string Password { get; set; } // Ajout du modificateur 'required'
+        public required string Login { get; set; } 
+        public required string Password { get; set; } 
     }
 }
